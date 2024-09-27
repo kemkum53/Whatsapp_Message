@@ -38,6 +38,7 @@ to discuss what you would like to change.
 ## TODO List
 - Develop in a way that does not require a GUI.
 - Message with using excel table
+- Send messages to groups
 
 
 ## Change Log
