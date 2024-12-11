@@ -169,3 +169,4 @@ cython_debug/
 /wp_message/chrome-data
 /wp_message/firefox-data
 wp_message/.DS_Store
+/chromedriver*
