@@ -42,6 +42,9 @@ to discuss what you would like to change.
 
 
 ## Change Log
+###  2024-12-12
+- **Changed** - Selectors moved to global variables. Updated 'chrome_data_dir' path.
+
 ###  2024-27-09
 - **Created** - Repository cereated.
 
