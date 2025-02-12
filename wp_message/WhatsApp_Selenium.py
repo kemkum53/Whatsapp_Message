@@ -13,16 +13,23 @@ import argparse
 import asyncio
 import sys
 
-EN_NEW_CHAT_ELEMENT = [By.CSS_SELECTOR, "div[aria-label=\'New chat\']"]
+EN_NEW_CHAT_ELEMENT = [By.CSS_SELECTOR, "div[aria-label=\'New chat\']", "div[aria-label=\'Yeni sohbet\']"]
+
 LOADING_BAR = [By.TAG_NAME, "progress"]
-EN_LOGIN_QR_CODE_ELEMENT = [By.CSS_SELECTOR, "canvas[aria-label=\'Scan this QR code to link a device!\']"]
-EN_LOGIN_WITH_PHONE_ELEMENT = [By.XPATH, "//span[contains(., 'Log in with phone number')]"]
-EN_LOGIN_TYPE_PHONE_NUMBER_ELEMENT = [By.CSS_SELECTOR, "input[aria-label=\'Type your phone number.\']"]
-EN_LOGIN_NEXT_BUTTON_ELEMENT = [By.XPATH, "//div[text()=\'Next\']"]
-EN_LOGIN_CODE_WAIT_ELEMENT = [By.CSS_SELECTOR, "div[aria-label=\'Enter code on phone:\'] span"]
+LOGIN_QR_CODE_ELEMENT = [By.CSS_SELECTOR, "canvas[aria-label=\'Scan this QR code to link a device!\']"]
+
+EN_LOGIN_WITH_PHONE_ELEMENT = [By.XPATH, "//span[contains(., 'Log in with phone number')]", "//span[contains(., 'Telefon numarası kullanarak giriş yapın')]"]
+
+EN_LOGIN_TYPE_PHONE_NUMBER_ELEMENT = [By.CSS_SELECTOR, "input[aria-label=\'Type your phone number.\']", "input[aria-label=\'Telefon numaranızı yazın.\']"]
+
+EN_LOGIN_NEXT_BUTTON_ELEMENT = [By.XPATH, "//div[text()=\'Next\']", "//div[text()=\'İleri\']"]
+
+EN_LOGIN_CODE_WAIT_ELEMENT = [By.CSS_SELECTOR, "div[aria-label=\'Enter code on phone:\'] span", "div[aria-label=\'Kodu telefonunuza girin:\'] span"]
+
 LOGIN_CODE_ELEMENT = [By.CSS_SELECTOR, "div[data-link-code]"]
-SEND_MESSAGE_PHONE_INPUT_ELEMENT = {By.CSS_SELECTOR, "div[contenteditable=\'true\']"}
-EN_SEND_MESSAGE_TEXT_INPUT_ELEMENT = {By.CSS_SELECTOR, "div[aria-placeholder=\'Type a message\']"}
+SEND_MESSAGE_PHONE_INPUT_ELEMENT = [By.XPATH, "//div[contains(text(), \'Search name or number\')]/following-sibling::div/div/div", "//div[contains(text(), \'Bir ad veya numara aratın\')]/following-sibling::div/div/div"]
+
+EN_SEND_MESSAGE_TEXT_INPUT_ELEMENT = [By.CSS_SELECTOR, "div[aria-placeholder=\'Type a message\']", "div[aria-placeholder=\'Bir mesaj yazın\']"]
 
 class WhatsApp_Selenium:
     def __init__(self, chrome_data_dir:str=f"{os.getenv('LOCALAPPDATA')}\\Google\\Chrome\\User Data\\Profile 1"):
@@ -36,6 +43,7 @@ class WhatsApp_Selenium:
         if not os.path.exists(self.chrome_data_dir):
             os.mkdir(self.chrome_data_dir)
         chrome_options = Options()
+        
         chrome_options.add_argument(f"--user-data-dir={self.chrome_data_dir}")  # Keep session infos
         
         # Set visibility
@@ -55,7 +63,7 @@ class WhatsApp_Selenium:
     def wait_qr(self):
         """Check qr code is visible"""
         try:
-            canvas_element = self.driver.find_element(EN_LOGIN_QR_CODE_ELEMENT[0], EN_LOGIN_QR_CODE_ELEMENT[1])
+            canvas_element = self.driver.find_element(LOGIN_QR_CODE_ELEMENT[0], LOGIN_QR_CODE_ELEMENT[1])
             if canvas_element.is_displayed():
                 return False
             else:
@@ -68,23 +76,27 @@ class WhatsApp_Selenium:
             For while loop
             -> True (Chat screen not loaded)
             -> False (Chat screen loaded)"""
-        try:
-            self.driver.find_element(EN_NEW_CHAT_ELEMENT[0], EN_NEW_CHAT_ELEMENT[1])
-            return False
-        except:
-            return True
+        for elem in EN_NEW_CHAT_ELEMENT[1:]:
+            try:
+                self.driver.find_element(EN_NEW_CHAT_ELEMENT[0], elem)
+                return False
+            except:
+                continue
+        return True
 
-    async def wait_element(self, by:By, search_value:str, time_limit:int, ex_code:int):
+    async def wait_element(self, by:By, search_values:list[str], time_limit:int, ex_code:int):
         """Wait for element to load with timer"""
         counter = 0
         while counter < time_limit:
-            try:
-                counter += 1
-                element = self.driver.find_element(by, search_value)
-                if element is not None:
-                    return element
-            except:
-                time.sleep(1)
+            counter += 1
+            for elem in search_values:
+                try:
+                    element = self.driver.find_element(by, elem)
+                    if element is not None:
+                        return element
+                except:
+                    continue
+            time.sleep(1)
                 
         raise TimeOutException("Element dosen\'t found...", ex_code) 
 
@@ -96,7 +108,7 @@ class WhatsApp_Selenium:
             # Check data folder
             if not os.path.exists(self.chrome_data_dir):
                 return False
-            chat = await self.wait_element(EN_NEW_CHAT_ELEMENT[0], EN_NEW_CHAT_ELEMENT[1], 5, 1010)
+            chat = await self.wait_element(EN_NEW_CHAT_ELEMENT[0], EN_NEW_CHAT_ELEMENT[1:], 5, 1010)
             return True
         except TimeOutException as e:
             return False
@@ -135,16 +147,16 @@ class WhatsApp_Selenium:
                     raise TimeOutException("Page cannot loaded. Please try again...", 1001)                
             
             # Find and click 'Link with phone number' area
-            button = await self.wait_element(EN_LOGIN_WITH_PHONE_ELEMENT[0], EN_LOGIN_WITH_PHONE_ELEMENT[1], 5, 1002)
+            button = await self.wait_element(EN_LOGIN_WITH_PHONE_ELEMENT[0], EN_LOGIN_WITH_PHONE_ELEMENT[1:], 5, 1002)
             button.click()
             time.sleep(1)
             
             # Find phone number input
-            input_field = await self.wait_element(EN_LOGIN_TYPE_PHONE_NUMBER_ELEMENT[0], EN_LOGIN_TYPE_PHONE_NUMBER_ELEMENT[1], 5, 1003)
+            input_field = await self.wait_element(EN_LOGIN_TYPE_PHONE_NUMBER_ELEMENT[0], EN_LOGIN_TYPE_PHONE_NUMBER_ELEMENT[1:], 5, 1003)
             input_field.send_keys(number)  # Fill with number
             
             # Click 'Next' button
-            next_button = await self.wait_element(EN_LOGIN_NEXT_BUTTON_ELEMENT[0], EN_LOGIN_NEXT_BUTTON_ELEMENT[1], 5, 1004)
+            next_button = await self.wait_element(EN_LOGIN_NEXT_BUTTON_ELEMENT[0], EN_LOGIN_NEXT_BUTTON_ELEMENT[1:], 5, 1004)
             next_button.click()
             
             print(f"{Fore.BLUE}[INF]{Fore.RESET} Watigin for login code...")
@@ -153,7 +165,7 @@ class WhatsApp_Selenium:
             while True:
                 code_counter += 1
                 try:
-                    spans = await self.wait_element(EN_LOGIN_CODE_WAIT_ELEMENT[0], EN_LOGIN_CODE_WAIT_ELEMENT[1], 1, 1005)
+                    spans = await self.wait_element(EN_LOGIN_CODE_WAIT_ELEMENT[0], EN_LOGIN_CODE_WAIT_ELEMENT[1:], 1, 1005)
                     link_code_element = self.driver.find_element(LOGIN_CODE_ELEMENT[0], LOGIN_CODE_ELEMENT[1])
                     break
                 except:
@@ -210,20 +222,20 @@ class WhatsApp_Selenium:
                 return
             
             # Wait loading page
-            new_chat_button = await self.wait_element(EN_NEW_CHAT_ELEMENT[0], EN_NEW_CHAT_ELEMENT[1], 5, 1011)
+            new_chat_button = await self.wait_element(EN_NEW_CHAT_ELEMENT[0], EN_NEW_CHAT_ELEMENT[1:], 5, 1011)
             time.sleep(1)
             new_chat_button.click()
             time.sleep(1)
             
             print(Fore.BLUE + "[INF]" + Fore.RESET + f"Messages sending...")
             for number in numbers:
-                number_input_field = await self.wait_element(SEND_MESSAGE_PHONE_INPUT_ELEMENT[0], SEND_MESSAGE_PHONE_INPUT_ELEMENT[1], 5, 1012)
+                number_input_field = await self.wait_element(SEND_MESSAGE_PHONE_INPUT_ELEMENT[0], SEND_MESSAGE_PHONE_INPUT_ELEMENT[1:], 5, 1012)
                 number_input_field.send_keys(number)
                 time.sleep(1)
                 number_input_field.send_keys(Keys.ENTER)
                 time.sleep(1)
                 
-                message_input_field = await self.wait_element(EN_SEND_MESSAGE_TEXT_INPUT_ELEMENT[0], EN_SEND_MESSAGE_TEXT_INPUT_ELEMENT[1], 5, 1013)
+                message_input_field = await self.wait_element(EN_SEND_MESSAGE_TEXT_INPUT_ELEMENT[0], EN_SEND_MESSAGE_TEXT_INPUT_ELEMENT[1:], 5, 1013)
                 message_input_field.send_keys(message)
                 time.sleep(1)
                 message_input_field.send_keys(Keys.ENTER)
@@ -234,7 +246,7 @@ class WhatsApp_Selenium:
         except WebDriverException as e:
             raise BrowserClosedException(1010)
         except Exception as e:
-            print(type(e))
+            print(str(e))
         finally:
             self.close_browser()
             
