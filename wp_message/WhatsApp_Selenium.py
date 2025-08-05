@@ -13,23 +13,47 @@ import argparse
 import asyncio
 import sys
 
-EN_NEW_CHAT_ELEMENT = [By.CSS_SELECTOR, "div[aria-label=\'New chat\']", "div[aria-label=\'Yeni sohbet\']"]
+# "New Chat" icon on WhatsApp home screen
+EN_NEW_CHAT_ELEMENT = [By.XPATH, "//button[@role='button' and @aria-label='New chat']", "//button[@role='button' and @aria-label='Yeni sohbet']"]
 
+# Progress bar while uploading WhatsApp
 LOADING_BAR = [By.TAG_NAME, "progress"]
+
+# QR code on WhatsApp login screen
 LOGIN_QR_CODE_ELEMENT = [By.CSS_SELECTOR, "canvas[aria-label=\'Scan this QR code to link a device!\']"]
 
-EN_LOGIN_WITH_PHONE_ELEMENT = [By.XPATH, "//span[contains(., 'Log in with phone number')]", "//span[contains(., 'Telefon numarası kullanarak giriş yapın')]"]
+# Log in with phone number button on WhatsApp login screen
+EN_LOGIN_WITH_PHONE_ELEMENT = [By.XPATH, "//div[@role='button' and contains(normalize-space(.), 'Log in with phone number')]", "//div[@role='button' and contains(normalize-space(.), 'Telefon numarası kullanarak giriş yapın')]"]
 
+# After pressing the button above, the phone number entry input appears.
 EN_LOGIN_TYPE_PHONE_NUMBER_ELEMENT = [By.CSS_SELECTOR, "input[aria-label=\'Type your phone number.\']", "input[aria-label=\'Telefon numaranızı yazın.\']"]
 
+# "Next" button on the number entry screen
 EN_LOGIN_NEXT_BUTTON_ELEMENT = [By.XPATH, "//div[text()=\'Next\']", "//div[text()=\'İleri\']"]
 
+# Wait element for the login code
 EN_LOGIN_CODE_WAIT_ELEMENT = [By.CSS_SELECTOR, "div[aria-label=\'Enter code on phone:\'] span", "div[aria-label=\'Kodu telefonunuza girin:\'] span"]
 
+# Login code element, contains the code
 LOGIN_CODE_ELEMENT = [By.CSS_SELECTOR, "div[data-link-code]"]
-SEND_MESSAGE_PHONE_INPUT_ELEMENT = [By.XPATH, "//div[contains(text(), \'Search name or number\')]/following-sibling::div/div/div", "//div[contains(text(), \'Bir ad veya numara aratın\')]/following-sibling::div/div/div"]
 
+# Search input on WhatsApp main screen
+SEND_MESSAGE_PHONE_INPUT_ELEMENT = [By.XPATH, "//div[@contenteditable='true' and @role='textbox' and @aria-label='Search name or number']", "//div[@contenteditable='true' and @role='textbox' and @aria-label='Bir ad veya numara aratın']"]
+
+# Message writing input on WhatsApp chat screen
 EN_SEND_MESSAGE_TEXT_INPUT_ELEMENT = [By.CSS_SELECTOR, "div[aria-placeholder=\'Type a message\']", "div[aria-placeholder=\'Bir mesaj yazın\']"]
+
+# The element that appears if the number is not found in the number search section
+IS_PHONE_FOUND_ELEMENT = [By.XPATH, "//*[contains(text(), \'No results found for\')]", "//*[contains(text(), \'için sonuç bulunamadı\')]"]
+
+# Add media button next to the message input in chat
+ATTACH_BUTTON_ELEMENT = [By.XPATH, "//button[@type='button' and @title='Attach' and @data-tab='10']", "//button[@title=\'Ekle\' and @type=\'button\' and @aria-label=\'Ekle\']"]
+
+# After clicking the media add button, click the "Images and Videos" button in the list that appears.
+PHOTO_INPUT_ELEMENT = [By.XPATH, "//li[.//span[text()=\'Photos & videos\']]//input[@type=\'file\']", "//li[.//span[text()=\'Fotoğraflar ve Videolar\']]//input[@type=\'file\']"] 
+
+# Input that appears after adding media
+CAPTION_TEXTBOX_ELEMENT = [By.XPATH, "//div[@role=\'textbox\' and @aria-placeholder=\'Add a caption\']", "//div[@role=\'textbox\' and @aria-placeholder=\'Başlık ekleyin\']"] # For the with image messages
 
 class WhatsApp_Selenium:
     def __init__(self, chrome_data_dir:str=f"{os.getenv('LOCALAPPDATA')}\\Google\\Chrome\\User Data\\Profile 1"):
@@ -210,10 +234,10 @@ class WhatsApp_Selenium:
         except Exception as e:
             print(str(e))
     
-    async def send_message(self, numbers:list, message:str):
+    async def send_message(self, numbers:list, message:str, media:list=None):
         try:
             self.start_browser() # Open browser
-            
+
             print(f"{Fore.BLUE}[INF]{Fore.RESET} Waiting for page to load...")
             await self.wait_loader()
             
@@ -231,10 +255,33 @@ class WhatsApp_Selenium:
             for number in numbers:
                 number_input_field = await self.wait_element(SEND_MESSAGE_PHONE_INPUT_ELEMENT[0], SEND_MESSAGE_PHONE_INPUT_ELEMENT[1:], 5, 1012)
                 number_input_field.send_keys(number)
-                time.sleep(1)
+                
+                try:
+                    phone_found = await self.wait_element(IS_PHONE_FOUND_ELEMENT[0], IS_PHONE_FOUND_ELEMENT[1:], 2, 1032)
+                    print(Fore.RED + "[ERR]" + Fore.RESET + f"Number not found: {number}")
+                    number_input_field.send_keys(Keys.ESCAPE)
+                    continue
+                except TimeOutException: # If get timeout exception that means number is valid. So continue to process.
+                    pass
+                except BrowserClosedException as e:
+                    raise BrowserClosedException(1010)
+
                 number_input_field.send_keys(Keys.ENTER)
                 time.sleep(1)
                 
+                if media:
+                    attach_button = await self.wait_element(ATTACH_BUTTON_ELEMENT[0], ATTACH_BUTTON_ELEMENT[1:], 5, 1033)
+                    attach_button.click()
+                    await asyncio.sleep(0.5)
+                    
+                    photo_input = await self.wait_element(PHOTO_INPUT_ELEMENT[0], PHOTO_INPUT_ELEMENT[1:], 5, 1034)
+                    photo_input.send_keys("\n".join(media))
+                    await asyncio.sleep(0.5)
+                    
+                    message_input_field = await self.wait_element(CAPTION_TEXTBOX_ELEMENT[0], CAPTION_TEXTBOX_ELEMENT[1:], 5, 1035)
+                    message_input_field.send_keys(Keys.ENTER)
+                    await asyncio.sleep(0.5)
+
                 message_input_field = await self.wait_element(EN_SEND_MESSAGE_TEXT_INPUT_ELEMENT[0], EN_SEND_MESSAGE_TEXT_INPUT_ELEMENT[1:], 5, 1013)
                 message_input_field.send_keys(message)
                 time.sleep(1)
@@ -253,6 +300,7 @@ class WhatsApp_Selenium:
     async def is_logged_in(self):
         try:
             self.start_browser() # Open browser
+            
             print(f"{Fore.BLUE}[INF]{Fore.RESET} Waiting for page to load...")
             await self.wait_loader()
             
@@ -280,6 +328,7 @@ async def main():
         parser.add_argument("--hide", action="store_true", help=f"Hide browser. {Fore.RED}[WAR] Do not use when logging in!!{Fore.RESET}")
         parser.add_argument("--numbers", nargs="+", required=False, help="List of phone numbers to send the message to")
         parser.add_argument("--message", type=str, required=False, help="Message to be sent")
+        parser.add_argument("--media", nargs="+", required=False, help="Paths to media files to be sent")
         args = parser.parse_args()
         
         bot = WhatsApp_Selenium()
@@ -304,11 +353,9 @@ async def main():
             return
 
         if args.numbers and args.message:
-            await bot.send_message(args.numbers, args.message)
-
-            bot.close_browser()
+            await bot.send_message(args.numbers, args.message, args.media)
     except:
-        parser.print_help()
+        # parser.print_help()
         return
 
 if __name__ == "__main__":
