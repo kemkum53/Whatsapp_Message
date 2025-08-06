@@ -56,7 +56,7 @@ PHOTO_INPUT_ELEMENT = [By.XPATH, "//li[.//span[text()=\'Photos & videos\']]//inp
 CAPTION_TEXTBOX_ELEMENT = [By.XPATH, "//div[@role=\'textbox\' and @aria-placeholder=\'Add a caption\']", "//div[@role=\'textbox\' and @aria-placeholder=\'Başlık ekleyin\']"] # For the with image messages
 
 class WhatsApp_Selenium:
-    def __init__(self, chrome_data_dir:str=f"{os.getenv('LOCALAPPDATA')}\\Google\\Chrome\\User Data\\Profile 1"):
+    def __init__(self, chrome_data_dir:str=f"{os.getenv('LOCALAPPDATA')}\\Google\\Chrome\\User Data\\Profile 2"):
         self.hide_browser = False
         self.browser_open = False
         self.chrome_data_dir = chrome_data_dir
@@ -246,13 +246,13 @@ class WhatsApp_Selenium:
                 return
             
             # Wait loading page
-            new_chat_button = await self.wait_element(EN_NEW_CHAT_ELEMENT[0], EN_NEW_CHAT_ELEMENT[1:], 5, 1011)
-            time.sleep(1)
-            new_chat_button.click()
-            time.sleep(1)
             
             print(Fore.BLUE + "[INF]" + Fore.RESET + f"Messages sending...")
             for number in numbers:
+                new_chat_button = await self.wait_element(EN_NEW_CHAT_ELEMENT[0], EN_NEW_CHAT_ELEMENT[1:], 5, 1011)
+                new_chat_button.click()
+                time.sleep(1)
+                
                 number_input_field = await self.wait_element(SEND_MESSAGE_PHONE_INPUT_ELEMENT[0], SEND_MESSAGE_PHONE_INPUT_ELEMENT[1:], 5, 1012)
                 number_input_field.send_keys(number)
                 
@@ -290,6 +290,9 @@ class WhatsApp_Selenium:
                 
                 print(Fore.GREEN + "[SUC]" + Fore.RESET + f"Message sended to: {number}")
                 time.sleep(1)
+            
+            if media:
+                time.sleep(10)
         except WebDriverException as e:
             raise BrowserClosedException(1010)
         except Exception as e:
