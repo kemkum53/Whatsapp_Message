@@ -53,7 +53,7 @@ ATTACH_BUTTON_ELEMENT = [By.XPATH, "//button[@type='button' and @title='Attach' 
 PHOTO_INPUT_ELEMENT = [By.XPATH, "//li[.//span[text()=\'Photos & videos\']]//input[@type=\'file\']", "//li[.//span[text()=\'Fotoğraflar ve Videolar\']]//input[@type=\'file\']"] 
 
 # Input that appears after adding media
-CAPTION_TEXTBOX_ELEMENT = [By.XPATH, "//div[@role=\'textbox\' and @aria-placeholder=\'Add a caption\']", "//div[@role=\'textbox\' and @aria-placeholder=\'Başlık ekleyin\']"] # For the with image messages
+CAPTION_TEXTBOX_ELEMENT = [By.XPATH, "//div[@role=\'textbox\' and @aria-placeholder=\'Type a message\']", "//div[@role=\'textbox\' and @aria-placeholder=\'Başlık ekleyin\']"] # For the with image messages
 
 class WhatsApp_Selenium:
     def __init__(self, chrome_data_dir:str=f"{os.getenv('LOCALAPPDATA')}\\Google\\Chrome\\User Data\\Profile 2"):
